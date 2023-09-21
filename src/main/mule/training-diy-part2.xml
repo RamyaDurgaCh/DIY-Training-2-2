@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:accounts-system-api="http://www.mulesoft.org/schema/mule/accounts-system-api" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/accounts-system-api http://www.mulesoft.org/schema/mule/accounts-system-api/current/mule-accounts-system-api.xsd">
+	<sub-flow name="end_logger" doc:id="fce2294f-4289-482a-8d56-034d9ca5b683" >
+		<logger level="INFO" doc:name="Logger" doc:id="d50f0180-bde5-4ce7-bf09-0d5e8428fe4c" message="This is the Logger at exit"/>
+	</sub-flow>
+	<sub-flow name="First_loggerAndVariable" doc:id="9e90907a-f7fb-4408-bfd0-0be308839537" >
+		<logger level="INFO" doc:name="First logger" doc:id="abc53dd5-615b-4ef5-b782-a7baa3b77d7c" />
+		<set-variable value="#[message.attributes.headers.user_id]" doc:name="user_id" doc:id="7333349b-1af6-49b0-8c97-121e2f1395a4" variableName="user_id"/>
+	</sub-flow>
+	<flow name="accountsBasedOnAccountTypeandName" doc:id="9246e3ce-0a48-4aa1-b7b1-dc41cf7d5f27" >
+		<http:listener doc:name="GET /accounts-by-name" doc:id="3d9e7ee1-aeee-48b4-81ca-6b0a1c0ddfc4" config-ref="HTTP_Listener_config" path="/diy1"/>
+		<flow-ref doc:name="Flow Reference" doc:id="7fffb247-a24a-4b62-b435-62c6f1f8f76d" name="First_loggerAndVariable"/>
+		<http:request method="GET" doc:name="Request" doc:id="137c7ce3-6157-4ccd-9650-d6dded4c6375" url="http://training-customer-proxy-application-sapi.us-e2.cloudhub.io/api/accounts" config-ref="HTTP_Request_configuration">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	user_id : 4400
+}]]]></http:headers>
+			<http:query-params ><![CDATA[#[output application/json
+---
+{
+	account_type : attributes.queryParams.account_type,
+	"name" : attributes.queryParams.name
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="3990ff95-1a01-4620-88ef-922877796471" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="b582ad7c-864c-4e55-82d4-47c240bfd0c9" name="end_logger"/>
+	</flow>
+	<flow name="postAccounts" doc:id="3d0623bd-c858-4277-b846-4eb94d5116c6" >
+		<http:listener doc:name="Listener" doc:id="2595e2d7-d2d3-4980-b831-50b051433548" config-ref="HTTP_Listener_config" path="/accounts" allowedMethods="POST"/>
+		<flow-ref doc:name="Flow Reference" doc:id="eb6d74e6-63fe-41fb-b806-f3d71d321f5d" name="First_loggerAndVariable"/>
+		<set-variable value="#[attributes.headers.user_id]" doc:name="user_id" doc:id="c8e25e0c-794e-4317-be36-c0d5f8a16744" variableName="user_id"/>
+		<set-variable value="#[sizeOf (payload)]" doc:name="accountsArray" doc:id="16715b5b-6a71-49cb-8d77-419f3e8394fd" variableName="accountsNumber"/>
+		<vm:publish doc:name="VM Publish" doc:id="7a237e39-4b23-4e11-91dd-6d63404e16fa" config-ref="VM_Config" sendCorrelationId="ALWAYS" queueName="input_queue">
+			<vm:content ><![CDATA[#[%dw 2.0
+output application/json
+---
+{user_id: vars.userId,
+accounts: payload
+
+}]]]></vm:content>
+		</vm:publish>
+		<ee:transform doc:name="Transform Message" doc:id="c1ada0a6-f889-4b46-9011-2e7731c7d059" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" :"Accounts submitted"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="7ebe432f-66bf-4a49-ac4e-b3882cec81bb" name="end_logger"/>
+	</flow>
+	<flow name="consumingQueue" doc:id="27f2a874-2c8f-45b8-a9aa-0c79d8046950" >
+		<vm:listener queueName="input_queue" doc:name="Listener" doc:id="57088256-3fc8-42f5-8c81-c635d134421e" config-ref="VM_Config"/>
+		<logger level="INFO" doc:name="startingLog" doc:id="24a280db-3686-4dbf-89fc-fdd56070c62e" />
+		<set-variable value="#[payload.user_id]" doc:name="Set Variable" doc:id="cdd7fe24-3a0b-45cf-abbb-e9f7a7c35bdd" variableName="user_id"/>
+		<http:request method="POST" doc:name="Request" doc:id="7ad2d93b-87e0-4fdf-9ec6-5f4c0596e861" config-ref="HTTP_Request_configuration" path="/accounts">
+			<http:body ><![CDATA[#[payload.accounts]]]></http:body>
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"user_id" : 4400,
+	"client_id": "ba5b8121e37d4ceea4abbc15efd80219",
+	"client_secret" : "578333a7B0414a02a8ECF11E1B48E10e"
+}]]]></http:headers>
+		</http:request>
+		<flow-ref doc:name="Flow Reference" doc:id="5fa860d0-1ced-40df-b570-c056c70f6109" name="end_logger"/>
+	</flow>
+</mule>

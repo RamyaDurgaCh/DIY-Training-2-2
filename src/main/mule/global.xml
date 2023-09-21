@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="9f20a83d-c439-4091-8ba3-3489dc654169" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="e4574ace-7ce8-4003-ad86-49106434f1af" >
+		<http:request-connection host="training-customer-accounts-sapi.us-e2.cloudhub.io" port="8081" />
+	</http:request-config>
+	<vm:config name="VM_Config" doc:name="VM Config" doc:id="599cac1c-68dc-403f-a7a0-8f1b471f1736" >
+		<vm:queues >
+			<vm:queue queueName="input_queue" />
+		</vm:queues>
+	</vm:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="cb422dea-abc8-40aa-8c05-0631ec74231e" file="secure.yaml" />
+	
+	
+</mule>
